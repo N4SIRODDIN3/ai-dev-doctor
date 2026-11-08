@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export type Finding = {
@@ -21,7 +21,9 @@ function findSecretLikeFiles(repositoryPath: string, relativePath = ''): string[
   for (const entry of readdirSync(directory)) {
     const entryPath = path.join(directory, entry);
     const entryRelativePath = path.join(relativePath, entry);
-    const stats = statSync(entryPath);
+    const stats = lstatSync(entryPath);
+
+    if (stats.isSymbolicLink()) continue;
 
     if (stats.isDirectory()) {
       if (!ignoredDirectories.has(entry)) matches.push(...findSecretLikeFiles(repositoryPath, entryRelativePath));

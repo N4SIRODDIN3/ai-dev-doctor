@@ -28,7 +28,9 @@ The checks cover README, license, `.gitignore` protections, `package.json` scrip
 
 ```bash
 npm test
+npm run lint
 npm run build
+npm run audit
 ```
 
 ## Status

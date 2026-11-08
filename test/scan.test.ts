@@ -1,4 +1,5 @@
-import { rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { scanRepository } from '../src/scanner.js';
@@ -35,5 +36,22 @@ describe('scanRepository', () => {
       'missing-test-script',
       'missing-lint-script',
     ]);
+  });
+
+  it('skips symlinked directories so secret scans stay inside the target and do not cycle', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ai-dev-doctor-'));
+    const outside = mkdtempSync(path.join(os.tmpdir(), 'ai-dev-doctor-outside-'));
+    mkdirSync(path.join(root, 'nested'));
+    writeFileSync(path.join(outside, '.env'), 'OUTSIDE_SECRET=not-a-real-secret');
+    symlinkSync(outside, path.join(root, 'outside-link'), 'junction');
+    symlinkSync(root, path.join(root, 'nested', 'cycle'), 'junction');
+
+    try {
+      const findings = scanRepository(root);
+      expect(findings.filter((finding) => finding.id === 'secret-like-file')).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
